@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CHORDS Command Centre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: an operations console in VCH colours. Light working surface, one dark "engine" panel, schematic map as the anchor. */
+:root {
+  --bg: #edf2f5;
+  --panel: #ffffff;
+  --panel2: #f5f8fa;
+  --ink: #142a3c;
+  --ink2: #3c5366;
+  --muted: #687d8e;
+  --line: #d6e0e7;
+  --ocean: #0078ae;
+  --oceansoft: #e2f0f7;
+  --navy: #1f3b57;
+  --lime: #c1d82e;
+  --limeink: #5b6900;
+  --good: #2c7a4b; --goodsoft: #e2f1e7;
+  --warn: #a8650a; --warnsoft: #fbefd9;
+  --crit: #b3261e; --critsoft: #f8e2df;
+  --eng: #0d2032; --eng2: #132b42; --engline: #22405c; --engink: #d5e5f1; --engmuted: #8eaac0;
+  --t-ltc: #1f3b57; --t-al: #0078ae; --t-sh: #2c7a4b; --t-cch: #a8650a; --t-hhs: #6a5ca8;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  --serif: 'IBM Plex Serif', Georgia, serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+button { font-family: var(--sans); color: inherit; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--ocean); outline-offset: 2px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+.num { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--mono); }
+
+/* top bar */
+.top { position: sticky; top: 0; z-index: 20; background: var(--navy); color: #fff; display: flex; align-items: center; gap: 18px; padding: 10px 22px; }
+.brand { display: flex; align-items: center; gap: 11px; min-width: 0; flex-shrink: 1; }
+.brand > div { min-width: 0; }
+.brand-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.brand-name { font-weight: 700; letter-spacing: .02em; font-size: 15px; }
+.brand-sub { font-size: 11.5px; color: #b9cfe0; }
+.steps { display: flex; gap: 4px; flex: 1; justify-content: center; flex-wrap: nowrap; }
+.step { border: 0; background: transparent; color: #b9cfe0; font-size: 12.5px; font-weight: 500; padding: 7px 9px; white-space: nowrap; border-radius: 7px; cursor: pointer; display: flex; align-items: center; gap: 7px; }
+.step b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #5f7e98; font-size: 11px; }
+.step:hover { background: rgba(255,255,255,.08); color: #fff; }
+.step.on { background: #fff; color: var(--navy); }
+.step.on b { border-color: var(--lime); background: var(--lime); color: var(--navy); }
+.top-right { display: flex; align-items: center; gap: 8px; }
+.chip-demo { font-size: 11px; color: #e9f3c4; border: 1px solid #5e7a2a; background: rgba(193,216,46,.12); padding: 4px 9px; border-radius: 99px; white-space: nowrap; }
+.tbtn { border: 1px solid #3d5a76; background: transparent; color: #dbe8f2; font-size: 12px; padding: 6px 10px; border-radius: 7px; cursor: pointer; }
+.tbtn:hover, .tbtn.on { background: #2d4a66; }
+.tbtn[disabled] { opacity: .4; cursor: default; }
+.tbtn.next { background: var(--lime); border-color: var(--lime); color: var(--navy); font-weight: 600; }
+.tbtn.next:hover { background: #d3e65a; }
+
+/* page */
+.wrap { max-width: 1480px; margin: 0 auto; padding: 18px 22px 40px; }
+.notes-on .wrap { padding-bottom: 110px; }
+.head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.eyebrow { font-size: 11.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--ocean); margin-bottom: 4px; }
+.title { font-size: 26px; font-weight: 700; color: var(--navy); }
+.subtitle { color: var(--ink2); margin-top: 4px; max-width: 80ch; }
+.btn { border: 1px solid var(--line); background: var(--panel); color: var(--navy); font-weight: 600; font-size: 13px; padding: 9px 14px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--ocean); }
+.btn.primary { background: var(--ocean); border-color: var(--ocean); color: #fff; }
+.btn.primary:hover { background: #00669a; }
+.btn.lime { background: var(--lime); border-color: var(--lime); color: var(--navy); }
+.btn[disabled] { opacity: .55; cursor: default; }
+
+.grid { display: grid; gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+.card h3 { font-size: 13px; font-weight: 600; color: var(--navy); display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.card h3 small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; margin-bottom: 14px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.tile .lab { font-size: 12px; color: var(--muted); font-weight: 500; }
+.tile .big { font-size: 34px; font-weight: 700; color: var(--navy); line-height: 1.15; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.tile .sub { font-size: 12px; color: var(--ink2); }
+.tile.alert { background: var(--critsoft); border-color: #efc4be; }
+.tile.alert .big { color: var(--crit); }
+.tile.good { background: var(--goodsoft); border-color: #b9dcc6; }
+.tile.good .big { color: var(--good); }
+.tile.lime { background: #f6f9df; border-color: #dbe78f; }
+.tile.lime .big { color: var(--limeink); }
+
+/* map */
+.mapwrap { position: relative; }
+.map svg { width: 100%; height: auto; display: block; border-radius: 10px; background: var(--panel2); }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11.5px; color: var(--ink2); margin-top: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.mline { fill: none; stroke-width: 2; stroke-linecap: round; animation: draw 1.1s ease forwards; }
+@keyframes pop { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.popin { transform-box: fill-box; transform-origin: center; animation: pop .45s ease both; }
+@keyframes pulse { 0%,100% { opacity: .25; } 50% { opacity: .8; } }
+.halo { animation: pulse 2s ease-in-out infinite; }
+
+/* tables and bars */
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; padding: 6px 6px; border-bottom: 1px solid var(--line); }
+td { padding: 7px 6px; border-bottom: 1px solid #edf2f5; font-size: 13px; vertical-align: middle; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--panel2); color: var(--ink2); border: 1px solid var(--line); white-space: nowrap; }
+.pill.open { background: #f1f7cf; border-color: #d3e273; color: var(--limeink); }
+.pill.zero { background: var(--critsoft); border-color: #efc4be; color: var(--crit); }
+.pill.good { background: var(--goodsoft); border-color: #b9dcc6; color: var(--good); }
+.pill.ocean { background: var(--oceansoft); border-color: #b9dbec; color: var(--ocean); }
+.pill.warn { background: var(--warnsoft); border-color: #ecd09e; color: var(--warn); }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+.bar { height: 8px; background: #e6edf2; border-radius: 99px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--ocean); border-radius: 99px; }
+.srcnote { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+
+/* engine panel */
+.cc { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; }
+.cc.withEngine { grid-template-columns: minmax(0,1fr) 380px; }
+.engine { background: var(--eng); color: var(--engink); border-radius: 14px; border: 1px solid var(--engline); display: flex; flex-direction: column; min-height: 560px; position: sticky; top: 72px; max-height: calc(100vh - 90px); }
+.engine-h { padding: 14px 16px; border-bottom: 1px solid var(--engline); display: flex; align-items: center; gap: 10px; }
+.engine-h .t { font-weight: 600; color: #fff; }
+.engine-h .s { font-size: 11.5px; color: var(--engmuted); font-family: var(--mono); }
+.engine-feed { flex: 1; overflow-y: auto; padding: 12px 16px; font-family: var(--mono); font-size: 12px; line-height: 1.55; }
+.engine-feed .think { color: var(--engmuted); font-family: var(--sans); font-style: italic; font-size: 12.5px; margin: 6px 0 8px; }
+.engine-feed .tool { margin-bottom: 9px; animation: rise .3s ease both; }
+.engine-feed .tool .n { color: var(--lime); }
+.engine-feed .tool .src { color: #6f93b0; }
+.engine-feed .tool .fres { color: var(--engink); padding-left: 14px; }
+.engine-f { padding: 12px 16px; border-top: 1px solid var(--engline); display: flex; gap: 8px; align-items: center; }
+.engine-f .stat { font-size: 12px; color: var(--engmuted); }
+.engine-f .stat b { color: var(--lime); font-size: 18px; font-variant-numeric: tabular-nums; }
+@keyframes rise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.spin { width: 9px; height: 9px; border-radius: 50%; background: var(--lime); animation: pulse 1s infinite; display: inline-block; }
+
+/* opportunities */
+.opp { display: grid; grid-template-columns: 8px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 11px 4px; border-bottom: 1px solid #edf2f5; animation: rise .35s ease both; }
+.opp:last-child { border-bottom: 0; }
+.opp .sev { width: 8px; height: 36px; border-radius: 4px; }
+.opp .ot { font-weight: 600; color: var(--navy); }
+.opp .os { font-size: 12px; color: var(--muted); }
+
+/* person */
+.person { display: grid; grid-template-columns: 300px minmax(0,1fr); gap: 14px; align-items: start; }
+.plist .grp { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 10px 12px 6px; }
+.prow { width: 100%; text-align: left; border: 0; background: transparent; padding: 10px 12px; border-left: 3px solid transparent; cursor: pointer; display: block; border-bottom: 1px solid #edf2f5; }
+.prow:hover { background: var(--panel2); }
+.prow.on { background: var(--oceansoft); border-left-color: var(--ocean); }
+.prow .pn { font-weight: 600; color: var(--navy); font-size: 13.5px; }
+.prow .pd { font-size: 12px; color: var(--muted); }
+.ph { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.avatar { width: 46px; height: 46px; border-radius: 50%; background: var(--oceansoft); color: var(--ocean); display: grid; place-items: center; font-weight: 700; }
+.need { display: grid; grid-template-columns: 1fr 120px; gap: 10px; align-items: center; font-size: 13px; padding: 4px 0; }
+.fit { display: grid; grid-template-columns: 22px 170px 1fr; gap: 8px; padding: 7px 0; border-bottom: 1px solid #edf2f5; font-size: 13px; align-items: center; }
+.fit .x { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; }
+.fit .x.no { background: var(--critsoft); color: var(--crit); }
+.fit .x.yes { background: var(--goodsoft); color: var(--good); }
+.pkg { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.pkg div { border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.pkg div.done { border-style: solid; border-color: #b9dcc6; background: var(--goodsoft); color: var(--good); animation: rise .25s ease both; }
+.callout { background: var(--navy); color: #e8f0f6; border-radius: 12px; padding: 16px 18px; }
+.callout b { color: var(--lime); }
+
+/* options */
+.opts { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+.opt { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--panel); display: flex; flex-direction: column; gap: 6px; }
+.opt.sq { background: var(--panel2); }
+.opt .on { font-weight: 700; color: var(--navy); }
+.opt .os { font-size: 12px; color: var(--muted); min-height: 34px; }
+.kv { display: flex; justify-content: space-between; font-size: 12.5px; border-top: 1px solid #edf2f5; padding-top: 5px; }
+.kv span:first-child { color: var(--muted); }
+.kv b { font-variant-numeric: tabular-nums; }
+.slider { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.slider input { flex: 1; accent-color: var(--ocean); }
+.slider output { font-weight: 700; color: var(--ocean); min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.res { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+.metric .lab { font-size: 12px; color: var(--muted); }
+.metric .v { font-size: 24px; font-weight: 700; color: var(--navy); font-variant-numeric: tabular-nums; }
+.metric .r { font-size: 11.5px; color: var(--ink2); }
+.range { position: relative; height: 10px; background: #e6edf2; border-radius: 99px; margin-top: 6px; }
+.range span { position: absolute; top: 0; height: 10px; background: #9fcbe2; border-radius: 99px; }
+.range i { position: absolute; top: -3px; width: 3px; height: 16px; background: var(--navy); border-radius: 2px; }
+.memo { font-family: var(--serif); font-size: 14.5px; line-height: 1.65; color: var(--ink); }
+.memo p { margin: 0 0 10px; max-width: 75ch; }
+sup[data-tip] { color: var(--ocean); cursor: help; font-family: var(--sans); font-weight: 600; font-size: 10px; }
+
+/* gift */
+.gift { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(0,1fr); gap: 14px; }
+.road td:first-child { font-weight: 600; color: var(--navy); }
+.endcard { background: var(--navy); color: #fff; border-radius: 16px; padding: 26px 28px; display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 24px; align-items: center; margin-top: 14px; }
+.endcard .nm { font-size: 28px; font-weight: 700; line-height: 1.2; text-wrap: balance; }
+.endcard .nm span { color: var(--lime); }
+.tier { border: 1px solid #3d5a76; border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+.tier .a { font-size: 26px; font-weight: 700; color: var(--lime); }
+.tier .d { font-size: 12.5px; color: #c9dae7; }
+
+/* notes, nav, modal, tooltip, toast */
+.notes { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; background: #fffbe6; border-top: 1px solid #ecdf9b; padding: 10px 22px 12px; font-size: 13.5px; color: #4d4300; display: flex; gap: 14px; align-items: flex-start; }
+.notes b { white-space: nowrap; }
+.modal-bg { position: fixed; inset: 0; background: rgba(13,32,50,.45); z-index: 40; display: grid; place-items: center; }
+.modal { background: #fff; border-radius: 14px; padding: 20px; width: min(460px, 92vw); }
+.modal label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 4px; }
+.modal input[type=text] { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+#tooltip { position: fixed; z-index: 60; max-width: 320px; background: var(--eng); color: var(--engink); font-size: 12px; line-height: 1.5; padding: 8px 11px; border-radius: 8px; pointer-events: none; display: none; box-shadow: 0 10px 28px rgba(6,17,30,.3); }
+#tooltip .s { font-family: var(--mono); font-size: 10.5px; color: var(--lime); margin-top: 4px; }
+.toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 50; background: var(--eng); color: #eef5fa; padding: 11px 18px; border-radius: 10px; font-size: 13px; display: flex; gap: 9px; align-items: center; box-shadow: 0 12px 32px rgba(6,17,30,.35); animation: rise .25s ease both; }
+.toast i { width: 9px; height: 9px; border-radius: 50%; background: var(--lime); display: inline-block; }
+
+.settled .opp, .settled .tool, .settled .popin { animation: none; }
+
+@media (max-width: 1360px) {
+  .step:not(.on) span { display: none; }
+}
+@media (max-width: 1150px) {
+  .cc.withEngine { grid-template-columns: minmax(0,1fr); }
+  .engine { position: static; max-height: none; min-height: 360px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .opts { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .gift, .endcard { grid-template-columns: minmax(0,1fr); }
+  .brand { min-width: 0; }
+}
+@media (max-width: 760px) {
+  .person { grid-template-columns: minmax(0,1fr); }
+  .res { grid-template-columns: minmax(0,1fr); }
+  .opts { grid-template-columns: minmax(0,1fr); }
+  .step span { display: none; }
+  .head { flex-direction: column; align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; }
+}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="tooltip" role="tooltip"></div>
+<script>
+/* ============================================================
+   CHORDS Command Centre — illustrative data layer
+   Shaped like the real sources (Cerner acute census, PARIS
+   community data, operator returns, contracts database, finance
+   GL, Signal 1 model outputs). ALL PATIENT DATA IS SYNTHETIC.
+   Acute site names are real; their numbers are illustrative.
+   ============================================================ */
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const DATA = (() => {
+  const sites = [
+    { id: 'vgh',  name: 'Vancouver General Hospital', short: 'VGH',             org: 'VCH',        lat: 49.2618, lon: -123.1234, beds: 700, alc: 62, edWaiting: 19 },
+    { id: 'sph',  name: "St. Paul's Hospital",        short: "St. Paul's",      org: 'Providence', lat: 49.2803, lon: -123.1291, beds: 400, alc: 38, edWaiting: 14 },
+    { id: 'msj',  name: 'Mount Saint Joseph Hospital', short: 'Mount St. Joseph', org: 'Providence', lat: 49.2588, lon: -123.0933, beds: 120, alc: 22, edWaiting: 3 },
+    { id: 'ubch', name: 'UBC Hospital',               short: 'UBC Hospital',    org: 'VCH',        lat: 49.2643, lon: -123.2457, beds: 100, alc: 18, edWaiting: 0 },
+    { id: 'rh',   name: 'Richmond Hospital',          short: 'Richmond',        org: 'VCH',        lat: 49.1683, lon: -123.1452, beds: 240, alc: 34, edWaiting: 9 },
+    { id: 'lgh',  name: 'Lions Gate Hospital',        short: 'Lions Gate',      org: 'VCH',        lat: 49.3207, lon: -123.0711, beds: 270, alc: 30, edWaiting: 8 },
+    { id: 'sqgh', name: 'Squamish General Hospital',  short: 'Squamish',        org: 'VCH',        lat: 49.7016, lon: -123.1558, beds: 20,  alc: 5,  edWaiting: 1, coastal: true },
+    { id: 'sech', name: 'Sechelt Hospital',           short: 'Sechelt',         org: 'VCH',        lat: 49.4742, lon: -123.7545, beds: 40,  alc: 7,  edWaiting: 2, coastal: true },
+    { id: 'qgh',  name: 'qathet General Hospital',    short: 'qathet (Powell River)', org: 'VCH',  lat: 49.8352, lon: -124.5247, beds: 30,  alc: 5,  edWaiting: 1, coastal: true },
+  ];
+
+  // Community portfolio (illustrative). costNight = illustrative cost per bed-night.
+  const portfolio = [
+    { id: 'ltc',   label: 'Long-term care',              places: 4600, open: 4,  costNight: 320,  src: 'PARIS · operator returns' },
+    { id: 'ltcs',  label: 'Secured long-term care',      places: 380,  open: 0,  costNight: 460,  src: 'PARIS · operator returns' },
+    { id: 'al',    label: 'Assisted living',             places: 1050, open: 3,  costNight: 165,  src: 'PARIS · operator returns' },
+    { id: 'sh',    label: 'Supported housing (MHSU)',    places: 2200, open: 4,  costNight: 120,  src: 'contracts database · operator returns' },
+    { id: 'cch',   label: 'Complex care housing',        places: 140,  open: 0,  costNight: 350,  src: 'contracts database' },
+    { id: 'hhs',   label: 'Intensive home support',      places: 60,   open: 2,  costNight: 240,  src: 'PARIS · home health' },
+    { id: 'hah',   label: 'Hospital at Home',            places: 30,   open: 8,  costNight: 650,  src: 'HaH program census', virtual: true },
+    { id: 'srm',   label: 'Seniors Remote Monitoring',   places: 700,  open: 88, costNight: 12,   src: 'SRM program census', virtual: true },
+  ];
+
+  // Community sites for the map (generic names; numbers illustrative)
+  const nodes = [
+    { id: 'n1',  type: 'ltc', name: 'Long-term care · Kerrisdale',       lat: 49.2330, lon: -123.1560, beds: 142, open: 1 },
+    { id: 'n2',  type: 'ltc', name: 'Long-term care · Marpole',          lat: 49.2105, lon: -123.1300, beds: 118, open: 1 },
+    { id: 'n3',  type: 'ltc', name: 'Long-term care · Kensington',       lat: 49.2440, lon: -123.0780, beds: 160, open: 1 },
+    { id: 'n4',  type: 'ltc', name: 'Long-term care · Richmond Centre',  lat: 49.1700, lon: -123.1250, beds: 175, open: 1 },
+    { id: 'n5',  type: 'ltc', name: 'Long-term care · North Vancouver',  lat: 49.3260, lon: -123.0900, beds: 130, open: 0 },
+    { id: 'n6',  type: 'ltc', name: 'Long-term care · Dunbar',           lat: 49.2480, lon: -123.1850, beds: 96,  open: 0 },
+    { id: 'n7',  type: 'ltcs',name: 'Secured LTC · South Vancouver',     lat: 49.2190, lon: -123.0750, beds: 64,  open: 0 },
+    { id: 'n8',  type: 'ltcs',name: 'Secured LTC · Richmond',            lat: 49.1580, lon: -123.1600, beds: 48,  open: 0 },
+    { id: 'n9',  type: 'al',  name: 'Assisted living · Fairview',        lat: 49.2650, lon: -123.1300, beds: 88,  open: 1 },
+    { id: 'n10', type: 'al',  name: 'Assisted living · Steveston',       lat: 49.1530, lon: -123.1800, beds: 72,  open: 1 },
+    { id: 'n11', type: 'al',  name: 'Assisted living · Lonsdale',        lat: 49.3150, lon: -123.0750, beds: 64,  open: 1 },
+    { id: 'n12', type: 'sh',  name: 'Supported housing · Strathcona',    lat: 49.2790, lon: -123.0920, beds: 96,  open: 1 },
+    { id: 'n13', type: 'sh',  name: 'Supported housing · Downtown South',lat: 49.2760, lon: -123.1260, beds: 74,  open: 1 },
+    { id: 'n14', type: 'sh',  name: 'Supported housing · Mount Pleasant',lat: 49.2620, lon: -123.1000, beds: 58,  open: 1 },
+    { id: 'n15', type: 'sh',  name: 'Supported housing · Grandview',     lat: 49.2700, lon: -123.0690, beds: 52,  open: 1 },
+    { id: 'n16', type: 'sh',  name: 'Supported housing · West End',      lat: 49.2860, lon: -123.1400, beds: 48,  open: 0 },
+    { id: 'n17', type: 'cch', name: 'Complex care housing · DTES',       lat: 49.2820, lon: -123.0990, beds: 40,  open: 0 },
+    { id: 'n18', type: 'cch', name: 'Complex care housing · Fraserview', lat: 49.2220, lon: -123.0600, beds: 30,  open: 0 },
+    { id: 'n19', type: 'hhs', name: 'Home health · Vancouver West',      lat: 49.2520, lon: -123.1650, beds: 0,   open: 1, program: true },
+    { id: 'n20', type: 'hhs', name: 'Home health · Richmond',            lat: 49.1800, lon: -123.1100, beds: 0,   open: 1, program: true },
+  ];
+
+  const neighbourhoods = [
+    ['Downtown', 49.2925, -123.1350], ['Kitsilano', 49.2680, -123.1650], ['UBC', 49.2530, -123.2420],
+    ['Kerrisdale', 49.2260, -123.1620], ['Marpole', 49.2040, -123.1420], ['East Vancouver', 49.2350, -123.0600],
+    ['Richmond', 49.1520, -123.1900], ['North Vancouver', 49.3330, -123.0650], ['West Vancouver', 49.3320, -123.1600],
+    ['Downtown Eastside', 49.2885, -123.0880],
+  ];
+  // ---- synthetic ALC census (221 patients) -------------------------------
+  // need: destination the person needs; counts tuned to the demo story.
+  const needCounts = [
+    ['ltc', 102], ['ltcs', 31], ['al', 9], ['sh', 14], ['home', 10], ['abi', 23], ['complex', 19], ['other', 13],
+  ];
+  const needMeta = {
+    ltc:     { label: 'Long-term care',               dx: ['Frailty, falls', 'Advanced dementia', 'Post-stroke, dependent', 'Parkinson disease, falls', 'Heart failure, frailty', 'COPD, dependent ADLs'] },
+    ltcs:    { label: 'Secured long-term care',       dx: ['Dementia with exit-seeking', 'Dementia with agitation', 'Frontotemporal dementia', 'Dementia with wandering'] },
+    al:      { label: 'Assisted living',              dx: ['Deconditioning, lives alone', 'Mild cognitive impairment', 'Post hip fracture, recovered'] },
+    sh:      { label: 'Supported housing',            dx: ['Schizophrenia, stable', 'Concurrent disorders, stable', 'Bipolar disorder, stable'] },
+    home:    { label: 'Home with supports',           dx: ['Post-op, needs home support', 'COPD, home oxygen', 'Heart failure, lives with spouse', 'Deconditioning after pneumonia'] },
+    abi:     { label: 'Brain injury, neuropsychiatric', dx: ['Hypoxic brain injury after overdose', 'Traumatic brain injury, disinhibition', 'Hypoxic brain injury, agitation'] },
+    complex: { label: 'Complex care (concurrent needs)', dx: ['Concurrent disorders, wound care', 'Unhoused, IV antibiotics completed', 'Unhoused, amputation', 'Concurrent disorders, mobility'] },
+    other:   { label: 'Specialized (bariatric, airway)', dx: ['Bariatric, 2-person transfers', 'Tracheostomy, weaning', 'Ventilator-dependent'] },
+  };
+  const first = ['A.', 'B.', 'C.', 'D.', 'E.', 'F.', 'G.', 'H.', 'J.', 'K.', 'L.', 'M.', 'N.', 'P.', 'R.', 'S.', 'T.', 'W.'];
+  const given = ['Ada', 'Ben', 'Clara', 'David', 'Edith', 'Farid', 'Grace', 'Hiro', 'Irene', 'Jun', 'Karen', 'Luis', 'Mina', 'Nora', 'Omar', 'Paula', 'Raj', 'Sun', 'Tom', 'Uma', 'Vera', 'Wei', 'Yusuf', 'Zoe'];
+  const rnd = mulberry32(20261108);
+  const pick = (a) => a[Math.floor(rnd() * a.length)];
+
+  // site slots proportional to ALC counts
+  const siteSlots = [];
+  sites.forEach((s) => { for (let i = 0; i < s.alc; i++) siteSlots.push(s.id); });
+  for (let i = siteSlots.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [siteSlots[i], siteSlots[j]] = [siteSlots[j], siteSlots[i]]; }
+
+  const patients = [];
+  let k = 0;
+  needCounts.forEach(([need, n]) => {
+    for (let i = 0; i < n; i++) {
+      const young = need === 'abi' || need === 'complex' || need === 'sh';
+      const age = young ? 34 + Math.floor(rnd() * 30) : 68 + Math.floor(rnd() * 26);
+      const days = need === 'abi' ? 40 + Math.floor(rnd() * 90) : need === 'complex' ? 30 + Math.floor(rnd() * 80)
+        : need === 'ltcs' ? 25 + Math.floor(rnd() * 70) : 4 + Math.floor(rnd() * 60);
+      patients.push({
+        id: 'A-' + (3100 + k), name: pick(given) + ' ' + pick(first), age, site: siteSlots[k], need,
+        dx: pick(needMeta[need].dx), days,
+      });
+      k++;
+    }
+  });
+
+  // ---- named personas (replace three generated rows) --------------------
+  const personas = {
+    daniel: { id: 'A-2088', name: 'Daniel R.', age: 49, site: 'vgh', need: 'abi', days: 81, unit: '7 West', persona: 'daniel',
+      dx: 'Hypoxic brain injury after overdose (2025)',
+      presentation: 'Medically stable for 81 days. Hypoxic brain injury after an overdose last year, with disinhibition, impulsivity and episodes of agitation. Mobile and physically well. Needs 24-hour supervision and a behaviour support plan. Was unhoused before admission.',
+      needsProfile: [ ['24-hour supervision', 0.92], ['Behaviour support (agitation, disinhibition)', 0.85], ['Psychiatry and medication management', 0.7], ['Personal care', 0.3], ['Mobility support', 0.1] ],
+      fit: [
+        ['Long-term care', false, 'Declined by 3 homes: behaviours; under 65'],
+        ['Secured long-term care', false, 'No vacancy; designed for dementia, not younger brain injury'],
+        ['Assisted living', false, 'Needs 24-hour supervision'],
+        ['Supported housing', false, 'Care needs exceed staffing model'],
+        ['Complex care housing', false, 'No vacancy (140 of 140 places full)'],
+        ['Home with supports', false, 'No home'],
+      ] },
+    margaret: { id: 'I-5521', name: 'Margaret L.', age: 84, site: 'vgh', need: 'hah', days: 2, unit: '6 East', persona: 'margaret', inpatient: true,
+      dx: 'Heart failure exacerbation (acute inpatient, day 2)',
+      presentation: 'Admitted two days ago with a heart failure exacerbation. Responding to IV diuretics; oxygen weaned. Lives with her husband, 4 km from VGH. Still needs acute-level care for several days, but it can be delivered at home.',
+      criteria: [ ['Clinically stable on Signal 1 deterioration model (low risk, 48 h)', true], ['Treatment deliverable at home (IV diuretic, daily labs)', true], ['Lives inside the Hospital at Home catchment', true], ['Caregiver at home', true], ['Patient and family consent', true] ],
+      package: ['History and physical', 'Medication reconciliation', 'Hospital at Home care plan', 'Daily lab orders', 'Medly enrolment (heart failure app)', 'Seniors Remote Monitoring kit', 'Family briefing note'] },
+    joseph: { id: 'A-2291', name: 'Joseph T.', age: 79, site: 'sph', need: 'ltc', days: 46, unit: '9 North', persona: 'joseph',
+      dx: 'Frailty, falls; waiting for long-term care',
+      presentation: 'Medically stable for 46 days. Frailty with repeated falls; needs help with most daily activities. On the long-term-care waitlist. Prefers to stay near his daughter in South Vancouver.',
+      needsProfile: [ ['Personal care', 0.8], ['Mobility support (falls)', 0.75], ['Nursing oversight', 0.4], ['Supervision', 0.3], ['Behaviour support', 0.05] ] },
+  };
+  // swap persona rows into the census (keep total = 221 and per-site counts)
+  const swapIn = (pers) => {
+    const idx = patients.findIndex((p) => p.need === pers.need && p.site === pers.site && !p.persona);
+    if (idx >= 0) patients[idx] = { ...patients[idx], ...pers };
+  };
+  swapIn(personas.daniel);
+  swapIn(personas.joseph);
+
+  // ---- acute inpatients screened for Hospital at Home (not ALC) ---------
+  const inpatients = [
+    { ...personas.margaret },
+    { id: 'I-5530', name: 'Peter H.',  age: 77, site: 'vgh', dx: 'Cellulitis, IV antibiotics', eligible: true },
+    { id: 'I-5544', name: 'Lena S.',   age: 69, site: 'rh',  dx: 'Pneumonia, improving', eligible: true },
+    { id: 'I-5561', name: 'Amir K.',   age: 73, site: 'lgh', dx: 'COPD exacerbation', eligible: true },
+    { id: 'I-5573', name: 'Rose D.',   age: 88, site: 'sph', dx: 'Urinary sepsis, day 3', eligible: true },
+    { id: 'I-5580', name: 'Victor N.', age: 81, site: 'msj', dx: 'Heart failure', eligible: false, reason: 'No caregiver at home' },
+    { id: 'I-5592', name: 'Hana M.',   age: 66, site: 'vgh', dx: 'Pyelonephritis', eligible: false, reason: 'Outside catchment' },
+  ];
+
+  // patients waiting to go home who need Seniors Remote Monitoring to do so
+  const srmCandidates = 4; // drawn from the 'home' group in the engine
+
+  return {
+    sites, portfolio, nodes, neighbourhoods, patients, personas, inpatients, srmCandidates, needMeta,
+    occupiedAcute: 1948,
+    costs: { alcDay: 1090, alcDayUpper: 2000, avgLos: 8.1 },
+    reportCard: { alcShare: 0.111, alcTarget: 0.104, edWithin10h: 0.358, edTarget: 0.58 },
+    contracts: [
+      { name: 'Supported housing · Downtown South (operator A)', units: 40, occ90: 0.71, costNight: 120 },
+      { name: 'Supported housing · Grandview (operator B)',      units: 32, occ90: 0.74, costNight: 120 },
+    ],
+    mismatches: { stepUp: 37, stepDown: 24 },
+    abiOptions: [
+      { id: 'A', name: 'Contracted secured beds', sub: 'Behavioural unit with an LTC operator', costNight: 460, maxBeds: 12, fits: 15, lead: '9–12 months', capex: 0 },
+      { id: 'B', name: 'VCH small complex-care home', sub: '24-hour care aides, psychiatric nursing, psychiatry outreach', costNight: 620, maxBeds: 12, fits: 23, lead: '6–9 months', capex: 2400000 },
+      { id: 'C', name: 'Enhanced supported housing', sub: 'Clinical outreach for lower-intensity needs', costNight: 290, maxBeds: 6, fits: 6, lead: '3 months', capex: 0 },
+    ],
+  };
+})();
+
+/* ============================================================
+   CHORDS decision engine (demo). Every figure on screen is
+   computed here from DATA at runtime.
+   ============================================================ */
+const Engine = (() => {
+  const D = DATA;
+  const siteById = Object.fromEntries(D.sites.map((s) => [s.id, s]));
+  const nodeById = Object.fromEntries(D.nodes.map((n) => [n.id, n]));
+  const needToType = { ltc: 'ltc', al: 'al', sh: 'sh', home: 'hhs' };
+
+  function km(a, b) {
+    const R = 6371, toR = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * toR, dLon = (b.lon - a.lon) * toR;
+    const x = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * toR) * Math.cos(b.lat * toR) * Math.sin(dLon / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(x));
+  }
+
+  function census() {
+    const bySite = D.sites.map((s) => ({ ...s, alcCount: D.patients.filter((p) => p.site === s.id).length }));
+    const byNeed = {};
+    D.patients.forEach((p) => { byNeed[p.need] = (byNeed[p.need] || 0) + 1; });
+    const total = D.patients.length;
+    const edWaiting = D.sites.reduce((a, s) => a + s.edWaiting, 0);
+    return { total, bySite, byNeed, edWaiting, patientDays: D.patients.reduce((a, p) => a + p.days, 0) };
+  }
+
+  function capacity() {
+    const places = D.portfolio.filter((p) => !p.virtual).reduce((a, p) => a + p.places, 0);
+    const openResidential = D.portfolio.filter((p) => !p.virtual).reduce((a, p) => a + p.open, 0);
+    return { places, openResidential, portfolio: D.portfolio };
+  }
+
+  function match() {
+    const taken = new Set();
+    const matches = [];
+    D.nodes.filter((n) => n.open > 0).forEach((node) => {
+      for (let i = 0; i < node.open; i++) {
+        const cands = D.patients.filter((p) => !taken.has(p.id) && needToType[p.need] === node.type);
+        if (!cands.length) continue;
+        cands.sort((a, b) => score(b, node) - score(a, node));
+        const p = cands[0];
+        taken.add(p.id);
+        matches.push({ patient: p, node, km: km(siteById[p.site], node) });
+      }
+    });
+    return { matches, taken };
+  }
+  function score(p, node) {
+    let s = p.days - km(siteById[p.site], node) * 0.8;
+    if (p.persona === 'joseph' && node.id === 'n2') s += 500; // prefers South Vancouver
+    return s;
+  }
+
+  function srm(taken) {
+    const c = D.patients.filter((p) => p.need === 'home' && !taken.has(p.id) && p.age >= 65)
+      .sort((a, b) => b.days - a.days).slice(0, D.srmCandidates);
+    c.forEach((p) => taken.add(p.id));
+    return c;
+  }
+
+  function hah() {
+    const eligible = D.inpatients.filter((p) => p.eligible !== false);
+    const screened = D.occupiedAcute;
+    return { screened, eligible, ineligible: D.inpatients.filter((p) => p.eligible === false) };
+  }
+
+  function remaining(taken) {
+    const rest = D.patients.filter((p) => !taken.has(p.id));
+    const by = {};
+    rest.forEach((p) => { by[p.need] = (by[p.need] || 0) + 1; });
+    const noSetting = (by.abi || 0) + (by.complex || 0);
+    return { rest, by, noSetting };
+  }
+
+  function abiCohort() {
+    const c = D.patients.filter((p) => p.need === 'abi');
+    const avgDays = c.reduce((a, p) => a + p.days, 0) / c.length;
+    const sites = new Set(c.map((p) => p.site)).size;
+    const bedDaysYr = c.length * 365;
+    return { n: c.length, avgDays, sites, bedDaysYr, valueYr: bedDaysYr * D.costs.alcDay, patients: c };
+  }
+
+  // Options model with Monte Carlo bounds. beds = {A,B,C}, occ = central occupancy
+  function abiModel(beds, occ) {
+    const cohort = abiCohort();
+    const opts = D.abiOptions;
+    const placedRaw = opts.reduce((a, o) => a + Math.min(beds[o.id] || 0, o.maxBeds, o.fits), 0);
+    const placed = Math.min(cohort.n, placedRaw);
+    const totalBeds = opts.reduce((a, o) => a + (beds[o.id] || 0), 0);
+    const opexYr = opts.reduce((a, o) => a + (beds[o.id] || 0) * o.costNight * 365, 0);
+    const capex = opts.reduce((a, o) => a + ((beds[o.id] || 0) > 0 ? o.capex : 0), 0);
+    // Monte Carlo bounds: occupancy, placement breakdown, cost overrun (acute cost held at the conservative rate)
+    const r = mulberry32(42);
+    const sims = [];
+    for (let i = 0; i < 800; i++) {
+      const o = Math.max(0.6, Math.min(0.99, occ + (r() - 0.5) * 0.14));
+      const breakdown = r() * 0.15;
+      const costMul = 1 + (r() + r() + r() - 1.5) * 0.16;
+      const bd = placed * 365 * o * (1 - breakdown);
+      sims.push({ bd, net: bd * D.costs.alcDay - opexYr * costMul });
+    }
+    const q = (arr, p) => { const s = [...arr].sort((a, b) => a - b); return s[Math.floor(p * (s.length - 1))]; };
+    const bedDays = q(sims.map((s) => s.bd), 0.5);
+    const value = bedDays * D.costs.alcDay;
+    const net = q(sims.map((s) => s.net), 0.5);
+    return {
+      cohort, totalBeds, placed, opexYr, capex, bedDays, value, net,
+      admissions: bedDays / D.costs.avgLos,
+      costPerNight: totalBeds ? opexYr / (totalBeds * 365) : 0,
+      bd10: q(sims.map((s) => s.bd), 0.1), bd90: q(sims.map((s) => s.bd), 0.9),
+      net10: q(sims.map((s) => s.net), 0.1), net90: q(sims.map((s) => s.net), 0.9),
+    };
+  }
+
+  function contracts() {
+    const rows = D.contracts.map((c) => ({ ...c, empty: Math.round(c.units * (1 - c.occ90)) }));
+    const empty = rows.reduce((a, c) => a + c.empty, 0);
+    return { rows, empty, costYr: rows.reduce((a, c) => a + c.empty * c.costNight * 365, 0) };
+  }
+
+  function runAll() {
+    const cen = census();
+    const cap = capacity();
+    const m = match();
+    const s = srm(m.taken);
+    const h = hah();
+    const rem = remaining(m.taken);
+    const released = m.matches.length + s.length + h.eligible.length;
+    return { cen, cap, matches: m.matches, srm: s, hah: h, rem, released,
+      valueDay: released * D.costs.alcDay, valueYr: released * D.costs.alcDay * 365,
+      mismatches: D.mismatches, contracts: contracts(), abi: abiCohort() };
+  }
+
+  return { census, capacity, runAll, abiModel, abiCohort, km, siteById, nodeById };
+})();
+if (typeof module !== 'undefined') module.exports = { Engine };
+
+/* ============================================================
+   CHORDS Command Centre — demo UI (five scenes, presenter mode)
+   ============================================================ */
+const R = Engine.runAll(); // all results are computed up front; scene 2 animates their discovery
+const D = DATA;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('chords.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('chords.' + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } },
+};
+const S = {
+  scene: 1,
+  run: 'idle', // idle | running | done
+  feed: [],
+  shown: { lines: false, hah: false, srm: false, opps: [] },
+  released: 0,
+  selected: 'margaret',
+  pkg: {}, sent: {},
+  sl: { A: 6, B: 10, C: 6, occ: 0.9 },
+  notes: store.get('notes', false),
+  donor: store.get('donor', ''),
+  settings: false,
+};
+const SCENES = [
+  { n: 1, short: 'Tonight' },
+  { n: 2, short: 'Run the engine' },
+  { n: 3, short: 'One person' },
+  { n: 4, short: 'The next beds' },
+  { n: 5, short: 'The gift' },
+];
+const NOTES = {
+  1: 'Open on the whole system, not one hospital. Tonight about 220 people are in acute beds they no longer need. The places they need sit in VCH’s own portfolio, spread across five systems nobody sees together. Thirteen are open right now, and the ward teams can’t see them.',
+  2: 'Press Run. The engine reads Cerner, PARIS, operator returns, contracts and finance. Watch it place 13 people, find 5 patients for Hospital at Home and 4 who can go home with remote monitoring: 22 acute beds today. Sustained, that is about $8.8M of acute capacity a year.',
+  3: 'Make it human. Margaret goes home with Hospital at Home and the Medly heart-failure app. Joseph gets the long-term-care bed near his daughter. Daniel has nowhere to go: nothing in VCH’s portfolio fits a 49-year-old with a brain injury. He is one of 23.',
+  4: 'This is the decision engine. For Daniel’s cohort it compares three ways to create capacity and gives honest ranges, not a single number. Move the sliders. This is the question VCH cannot answer today: what should the next beds be?',
+  5: 'Everything here is a prototype on illustrative data. The gift makes it real: first results within 6 to 12 months, and a permanent centre that carries your name, sustained by VCH from Year 6.',
+};
+
+// ---------- helpers ----------
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const n0 = (v) => Math.round(v).toLocaleString('en-CA');
+const money = (v) => '$' + n0(v);
+const moneyM = (v) => (v < 0 ? '−' : '') + '$' + (Math.abs(v) / 1e6).toFixed(1) + 'M';
+const moneyK = (v) => '$' + Math.round(v / 1000).toLocaleString('en-CA') + 'K';
+const site = (id) => Engine.siteById[id];
+const reduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const tip = (text, src) => `data-tip="${esc(text)}"${src ? ` data-src="${esc(src)}"` : ''}`;
+const TYPE_COL = { ltc: '#1f3b57', ltcs: '#1f3b57', al: '#0078ae', sh: '#2c7a4b', cch: '#a8650a', hhs: '#6a5ca8' };
+const TYPE_LAB = { ltc: 'Long-term care', ltcs: 'Secured long-term care', al: 'Assisted living', sh: 'Supported housing', cch: 'Complex care housing', hhs: 'Home health' };
+
+// ---------- routing ----------
+function go(n) {
+  n = Math.max(1, Math.min(5, n));
+  if (location.hash !== '#scene-' + n) location.hash = 'scene-' + n; else { S.scene = n; render(); }
+}
+function fromHash() {
+  const m = /^#scene-([1-5])$/.exec(location.hash);
+  S.scene = m ? +m[1] : 1;
+  render();
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', fromHash);
+
+// ---------- shell ----------
+function render() {
+  const settled = S.run !== 'running';
+  const donorLine = S.donor ? `The ${esc(S.donor)} Centre · Vancouver Coastal Health` : 'Vancouver Coastal Health';
+  $('app').className = (settled ? 'settled' : '') + (S.notes ? ' notes-on' : '');
+  $('app').innerHTML = `
+  <header class="top">
+    <div class="brand">${logoSVG(30)}<div><div class="brand-name">CHORDS Command Centre</div><div class="brand-sub">${donorLine}</div></div></div>
+    <nav class="steps" aria-label="Demo scenes">${SCENES.map((s) => `<button class="step${S.scene === s.n ? ' on' : ''}" onclick="go(${s.n})" aria-current="${S.scene === s.n ? 'step' : 'false'}"><b>${s.n}</b><span>${s.short}</span></button>`).join('')}</nav>
+    <div class="top-right">
+      <span class="chip-demo" ${tip('Patients, places and costs are synthetic. Acute site names are real; their numbers are illustrative.')}>Illustrative data</span>
+      <button class="tbtn${S.notes ? ' on' : ''}" onclick="toggleNotes()" aria-pressed="${S.notes}">Notes</button>
+      <button class="tbtn" onclick="openSettings()">Settings</button>
+      <button class="tbtn" onclick="go(${S.scene - 1})" ${S.scene === 1 ? 'disabled' : ''} aria-label="Previous scene">←</button>
+      <button class="tbtn next" onclick="go(${S.scene + 1})" ${S.scene === 5 ? 'disabled' : ''} aria-label="Next scene">Next →</button>
+    </div>
+  </header>
+  <main class="wrap">${[null, scene1, scene2, scene3, scene4, scene5][S.scene]()}</main>
+  ${S.notes ? `<div class="notes"><b>Scene ${S.scene} ·</b><span>${esc(NOTES[S.scene])}</span></div>` : ''}
+  ${S.settings ? settingsHTML() : ''}`;
+  afterRender();
+}
+
+function logoSVG(sz) {
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="none" stroke="#c1d82e" stroke-width="2"/><circle cx="16" cy="16" r="10" fill="none" stroke="#7fb8d6" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="#0078ae"/></svg>`;
+}
+
+function headHTML(eyebrow, title, sub, right = '') {
+  return `<div class="head"><div><div class="eyebrow">${eyebrow}</div><h1 class="title">${title}</h1><p class="subtitle">${sub}</p></div>${right}</div>`;
+}
+
+// ---------- scene 1 & 2: command centre ----------
+function tilesHTML() {
+  const C = R.cen;
+  const after = S.run !== 'idle';
+  return `<div class="tiles">
+    <div class="tile"><div class="lab">ALC patients in acute beds today</div><div class="big">${n0(C.total)}</div>
+      <div class="sub" ${tip('VCH Health Care Report Card, July 2025 (April 2024 to March 2025).', 'vch.report_card.alc_days_share')}>11.1% of hospital days last year; target 10.4%</div></div>
+    <div class="tile"><div class="lab">Emergency patients waiting for a bed</div><div class="big">${n0(C.edWaiting)}</div>
+      <div class="sub" ${tip('VCH Health Care Report Card, July 2025.', 'vch.report_card.ed_admit_10h')}>35.8% admitted within 10 hours last year; target 58%</div></div>
+    <div class="tile lime"><div class="lab">Community places open right now</div><div class="big">${R.cap.openResidential}</div>
+      <div class="sub">across 4 portfolios; ward teams can’t see them</div></div>
+    ${after
+      ? `<div class="tile good"><div class="lab">Acute beds released today</div><div class="big" id="releasedBig">${S.run === 'done' ? R.released : S.released}</div>
+         <div class="sub" ${tip('22 beds × $1,090 per ALC day × 365 days. Capacity returned to emergency and surgical patients, not cash.', 'costs.alc_day')}>≈ ${moneyM(R.valueYr)} a year of acute capacity if sustained</div></div>`
+      : `<div class="tile alert"><div class="lab">Acute capacity held by ALC today</div><div class="big">${moneyK(C.total * D.costs.alcDay)}</div>
+         <div class="sub" ${tip('Sutherland et al. 2019 estimate of $1,090 per ALC bed-day (2016 dollars): conservative.', 'costs.alc_day')}>a day, at a conservative $1,090 per ALC day</div></div>`}
+  </div>`;
+}
+
+const MAP = { w: 600, h: 450, lonMin: -123.27, lonMax: -123.035, latMin: 49.147, latMax: 49.338 }; // schematic: vertical scale compressed
+const LABEL_DIR = { vgh: 'left', sph: 'right', msj: 'right', ubch: 'right', rh: 'right', lgh: 'left' };
+const px = (p) => [(p.lon - MAP.lonMin) / (MAP.lonMax - MAP.lonMin) * MAP.w, (MAP.latMax - p.lat) / (MAP.latMax - MAP.latMin) * MAP.h];
+
+function mapHTML() {
+  const grid = [];
+  for (let x = 40; x < MAP.w; x += 40) grid.push(`<line x1="${x}" y1="0" x2="${x}" y2="${MAP.h}" stroke="#e3eaef" stroke-width="1"/>`);
+  for (let y = 40; y < MAP.h; y += 40) grid.push(`<line x1="0" y1="${y}" x2="${MAP.w}" y2="${y}" stroke="#e3eaef" stroke-width="1"/>`);
+  const hoods = D.neighbourhoods.map(([n, lat, lon]) => { const [x, y] = px({ lat, lon }); return `<text x="${x}" y="${y}" text-anchor="middle" font-size="10" letter-spacing="1.2" fill="#9db0bf" font-family="IBM Plex Sans, sans-serif">${n.toUpperCase()}</text>`; }).join('');
+  const nodes = D.nodes.map((nd) => {
+    const [x, y] = px(nd); const c = TYPE_COL[nd.type];
+    const halo = nd.open > 0 ? `<circle cx="${x}" cy="${y}" r="12" fill="#c1d82e" class="halo"/>` : '';
+    let shape;
+    if (nd.type === 'ltc') shape = `<rect x="${x - 5}" y="${y - 5}" width="10" height="10" fill="${c}"/>`;
+    else if (nd.type === 'ltcs') shape = `<rect x="${x - 5.5}" y="${y - 5.5}" width="11" height="11" fill="#fff" stroke="${c}" stroke-width="2.5"/>`;
+    else if (nd.type === 'al') shape = `<rect x="${x - 5}" y="${y - 5}" width="10" height="10" fill="${c}" transform="rotate(45 ${x} ${y})"/>`;
+    else if (nd.type === 'sh') shape = `<path d="M${x} ${y - 7} L${x + 6.5} ${y + 5} L${x - 6.5} ${y + 5} Z" fill="${c}"/>`;
+    else if (nd.type === 'cch') shape = `<circle cx="${x}" cy="${y}" r="6" fill="${c}"/>`;
+    else shape = `<path d="M${x - 6} ${y + 5} V${y - 1} L${x} ${y - 7} L${x + 6} ${y - 1} V${y + 5} Z" fill="${c}"/>`;
+    return `<g ${tip(`${nd.name}${nd.program ? '' : ` · ${nd.beds} places`} · ${nd.open} open now`, 'paris.community_capacity')}>${halo}${shape}</g>`;
+  }).join('');
+  const sites = D.sites.filter((s) => !s.coastal).map((s) => {
+    const [x, y] = px(s); const r = 7 + Math.sqrt(s.alc) * 1.5;
+    const right = LABEL_DIR[s.id] !== 'left';
+    return `<g ${tip(`${s.name}: ${s.alc} ALC patients, ${s.edWaiting} emergency patients waiting for a bed`, 'cerner.adt_census')}>
+      <circle cx="${x}" cy="${y}" r="${r}" fill="#0078ae" stroke="#fff" stroke-width="2.5"/>
+      <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" font-family="IBM Plex Sans, sans-serif">${s.alc}</text>
+      <text x="${right ? x + r + 5 : x - r - 5}" y="${y + 4}" text-anchor="${right ? 'start' : 'end'}" font-size="11.5" font-weight="600" fill="#1f3b57" font-family="IBM Plex Sans, sans-serif" paint-order="stroke" stroke="#f5f8fa" stroke-width="3">${s.short}</text></g>`;
+  }).join('');
+  return `<div class="mapwrap map"><svg viewBox="0 0 ${MAP.w} ${MAP.h}" role="img" aria-label="Schematic map of VCH acute sites and community places">
+    ${grid.join('')}${hoods}<g id="mapLines">${linesHTML()}</g>${nodes}${sites}</svg>
+</div>
+    <div class="legend">
+      <span><i style="background:#0078ae;border-radius:50%"></i>Acute site (ALC today)</span>
+      <span><i style="background:#1f3b57"></i>Long-term care</span>
+      <span><i style="background:#fff;border:2px solid #1f3b57"></i>Secured LTC</span>
+      <span><i style="background:#0078ae;transform:rotate(45deg)"></i>Assisted living</span>
+      <span><i style="background:#2c7a4b;clip-path:polygon(50% 0,100% 100%,0 100%)"></i>Supported housing</span>
+      <span><i style="background:#a8650a;border-radius:50%"></i>Complex care housing</span>
+      <span><i style="background:#6a5ca8"></i>Home health</span>
+      <span><i style="background:#c1d82e;border-radius:50%"></i>Open now</span>
+    </div>
+    <div class="srcnote">Coastal sites, not shown: ${D.sites.filter((s) => s.coastal).map((s) => `${s.short} ${s.alc} ALC`).join(' · ')}. Schematic, not to scale; community place names are generic.</div>`;
+}
+
+function curve(a, b, bend = 0.18) {
+  const [x1, y1] = a, [x2, y2] = b; const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  const dx = x2 - x1, dy = y2 - y1; return `M${x1.toFixed(1)} ${y1.toFixed(1)} Q${(mx - dy * bend).toFixed(1)} ${(my + dx * bend).toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}`;
+}
+function homeSpot(p, i) { const [x, y] = px(site(p.site)); const a = (i * 2.4) + (p.id.length % 3); return [x + Math.cos(a) * 48, y + Math.sin(a) * 40]; }
+function linesHTML(part) {
+  const anim = S.run === 'running';
+  const st = (len, delay) => anim ? `stroke-dasharray="${len}" stroke-dashoffset="${len}" style="animation-delay:${delay}s"` : '';
+  let out = '';
+  if ((part === undefined && S.shown.lines) || part === 'lines') {
+    out += R.matches.map((m, i) => { const s = site(m.patient.site); if (s.coastal) return ''; return `<path class="mline" d="${curve(px(s), px(m.node))}" stroke="#7d9800" ${st(500, i * 0.08)}/>`; }).join('');
+  }
+  const homes = (list, col, key) => list.map((p, i) => { const s = site(p.site); if (s.coastal) return ''; const h = homeSpot(p, i + (key === 'srm' ? 7 : 0));
+    return `<path class="mline" d="${curve(px(s), h, 0.3)}" stroke="${col}" ${anim ? `stroke-dasharray="300" stroke-dashoffset="300" style="animation-delay:${i * 0.1}s"` : 'stroke-dasharray="4 4"'}/>
+      <path class="popin" d="M${(h[0] - 5).toFixed(1)} ${(h[1] + 4).toFixed(1)} v-5 l5 -5 l5 5 v5 z" fill="${col}"/>`; }).join('');
+  if ((part === undefined && S.shown.hah) || part === 'hah') out += homes(R.hah.eligible, '#0078ae', 'hah');
+  if ((part === undefined && S.shown.srm) || part === 'srm') out += homes(R.srm, '#6a5ca8', 'srm');
+  return out;
+}
+
+function portfolioHTML() {
+  const rows = D.portfolio.map((p) => `<tr><td>${esc(p.label)}</td><td class="r">${n0(p.places)}</td>
+    <td class="r"><span class="pill ${p.open > 0 ? 'open' : 'zero'}">${p.virtual ? p.open + ' slots' : p.open}</span></td>
+    <td class="r" ${tip('Illustrative cost per bed-night. Replacing these with VCH’s own unit costs is CHORDS’ first job.', p.src)}>${money(p.costNight)}</td></tr>`).join('');
+  return `<div class="card"><h3>Community portfolio <small>places · open now · cost per night</small></h3>
+    <table><thead><tr><th>Type</th><th class="r">Places</th><th class="r">Open</th><th class="r">Per night</th></tr></thead><tbody>${rows}
+    <tr><td><b>Acute bed, patient ready to leave</b></td><td class="r">–</td><td class="r">–</td><td class="r"><b ${tip('Conservative estimate (Sutherland et al. 2019).', 'costs.alc_day')}>${money(D.costs.alcDay)}</b></td></tr></tbody></table>
+    <div class="srcnote">These figures live in five systems today: Cerner, PARIS, operator returns, the contracts database and the finance ledger.</div></div>`;
+}
+
+function sitesHTML() {
+  const max = Math.max(...D.sites.map((s) => s.alc));
+  return `<div class="card"><h3>ALC by acute site <small>patients ready to leave · emergency patients waiting</small></h3>
+    <table><tbody>${D.sites.map((s) => `<tr><td style="width:38%">${esc(s.short)}${s.org === 'Providence' ? ' <span class="pill">Providence</span>' : ''}</td>
+      <td><div class="bar"><span style="width:${(s.alc / max * 100).toFixed(0)}%"></span></div></td>
+      <td class="r" style="width:48px"><b>${s.alc}</b></td><td class="r" style="width:64px;color:var(--crit)">${s.edWaiting} ED</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function scene1() {
+  return headHTML('Command centre · tonight', 'Tonight across Vancouver Coastal Health',
+    'Every acute bed held by someone who is ready to leave, and every community place that could take them. Today this picture is spread across five systems.',
+    `<button class="btn primary" onclick="go(2)">Run the decision engine →</button>`)
+    + tilesHTML()
+    + `<div class="grid" style="grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)">
+        <div class="card"><h3>VCH acute sites and community places <small>tonight</small></h3>${mapHTML()}</div>
+        <div class="grid" style="align-content:start">${portfolioHTML()}${sitesHTML()}</div></div>`;
+}
+
+// opportunities discovered by the engine
+const OPPS = [
+  { id: 'place', sev: '#2c7a4b', t: () => `Place ${R.matches.length} people into open community places today`,
+    s: () => { const c = {}; R.matches.forEach((m) => { c[m.node.type] = (c[m.node.type] || 0) + 1; }); return Object.entries(c).map(([k, v]) => `${TYPE_LAB[k]} ${v}`).join(' · ') + ' · referrals drafted, awaiting sign-off'; },
+    a: () => `<button class="btn" onclick="openPerson('joseph')">Review</button>` },
+  { id: 'hah', sev: '#0078ae', t: () => `${R.hah.eligible.length} inpatients can be treated at home`,
+    s: () => `Hospital at Home · ${n0(R.hah.screened)} inpatients screened with Signal 1 and program criteria`,
+    a: () => `<button class="btn" onclick="openPerson('margaret')">Review</button>` },
+  { id: 'srm', sev: '#6a5ca8', t: () => `${R.srm.length} patients can go home today with remote monitoring`,
+    s: () => 'Seniors Remote Monitoring kit plus home support · discharge plans drafted', a: () => `<button class="btn" onclick="openPerson('${R.srm[0].id}')">Review</button>` },
+  { id: 'none', sev: '#b3261e', t: () => `No suitable setting exists for ${R.rem.noSetting} people`,
+    s: () => `${R.rem.by.abi} with a brain injury · ${R.rem.by.complex} with complex concurrent needs · options analysis drafted`,
+    a: () => `<button class="btn primary" onclick="go(4)">Open analysis</button>` },
+  { id: 'contracts', sev: '#a8650a', t: () => `${R.contracts.rows.length} housing contracts under 75% occupied for 90 days`,
+    s: () => `${R.contracts.empty} empty units ≈ ${moneyK(R.contracts.costYr)} a year · renegotiation brief drafted`, a: () => `<span class="pill warn">Value for money</span>` },
+  { id: 'mismatch', sev: '#1f3b57', t: () => `${R.mismatches.stepUp + R.mismatches.stepDown} community residents in the wrong level of support`,
+    s: () => `${R.mismatches.stepUp} need more care than their housing provides · ${R.mismatches.stepDown} could step down from long-term care`, a: () => `<span class="pill">Review queue</span>` },
+];
+function oppHTML(o) {
+  return `<div class="opp"><div class="sev" style="background:${o.sev}"></div><div><div class="ot">${o.t()}</div><div class="os">${o.s()}</div></div><div>${o.a()}</div></div>`;
+}
+
+function scene2() {
+  const opps = S.run === 'done' ? OPPS : OPPS.filter((o) => S.shown.opps.includes(o.id));
+  const before = `<div class="card"><h3>What the engine will do</h3>
+    <table><tbody>
+      <tr><td>Read the acute census and every community place</td><td class="r"><span class="pill">Cerner · PARIS · operators</span></td></tr>
+      <tr><td>Price each bed type</td><td class="r"><span class="pill">finance ledger · contracts</span></td></tr>
+      <tr><td>Match people to the right setting</td><td class="r"><span class="pill">case-mix model</span></td></tr>
+      <tr><td>Find patients who can be treated or monitored at home</td><td class="r"><span class="pill">Signal 1 · program criteria</span></td></tr>
+      <tr><td>Flag contracts and residents that don’t fit</td><td class="r"><span class="pill">contracts database</span></td></tr>
+      <tr><td>Draft the case for capacity that doesn’t exist yet</td><td class="r"><span class="pill">decision engine</span></td></tr>
+    </tbody></table><div class="srcnote">Every action is a draft. Nothing moves without a person’s sign-off.</div></div>`;
+  const oppCard = `<div class="card"><h3>What the engine found <small>${S.run === 'done' ? OPPS.length + ' opportunities' : 'scanning…'}</small></h3><div id="oppList">${opps.map(oppHTML).join('')}</div></div>`;
+  return headHTML('Command centre · decision engine', 'Run the decision engine',
+    'The engine reads every source, matches people to the right setting, and drafts what leaders need to sign. Nothing moves without a person’s approval.')
+    + `<div class="cc withEngine"><div>${tilesHTML()}
+      <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.1fr)">
+        <div class="card"><h3>Matches across the region</h3>${mapHTML()}</div>
+        ${S.run === 'idle' ? before : oppCard}
+      </div></div>${engineHTML()}</div>`;
+}
+
+function engineHTML() {
+  return `<aside class="engine" aria-label="Decision engine activity">
+    <div class="engine-h">${logoSVG(26)}<div><div class="t">CHORDS decision engine</div><div class="s">${S.run === 'running' ? '<span class="spin"></span> running' : S.run === 'done' ? 'done · every figure traced to a source' : 'ready'}</div></div></div>
+    <div class="engine-feed" id="feed">${S.feed.map(feedItem).join('') || `<div class="think">Ready. Press Run to read tonight’s data across all nine acute sites and the community portfolio.</div>`}</div>
+    <div class="engine-f">${S.run === 'idle' ? `<button class="btn lime" onclick="runEngine()" style="flex:1">Run the engine</button>` : S.run === 'running' ? `<button class="btn" onclick="skipEngine()" style="flex:1">Skip to results</button>` : `<div class="stat">Acute beds released today<br><b>${R.released}</b></div><button class="btn" onclick="go(3)" style="margin-left:auto">See the people →</button>`}</div>
+  </aside>`;
+}
+function feedItem(f) {
+  if (f.think) return `<div class="think">${esc(f.think)}</div>`;
+  return `<div class="tool"><span class="n">▸ ${esc(f.tool)}</span> <span class="src">${esc(f.src)}</span><div class="fres">→ ${esc(f.res)}</div></div>`;
+}
+
+const STEPS = () => [
+  { think: 'Reading tonight’s data. Joining the acute census to every community place VCH funds.' },
+  { tool: 'get_acute_census', src: 'Cerner ADT', res: `${n0(D.occupiedAcute)} inpatients · ${R.cen.total} ALC across ${D.sites.length} sites · ${R.cen.edWaiting} ED patients waiting` },
+  { tool: 'get_community_capacity', src: 'PARIS · operator returns', res: `${n0(R.cap.places)} community places · ${R.cap.openResidential} open now` },
+  { tool: 'get_unit_costs', src: 'finance ledger · contracts', res: `cost per bed-night for ${D.portfolio.length} bed types (illustrative)` },
+  { tool: 'score_needs', src: 'case-mix model', res: `${R.cen.total} people tiered by care need and setting fit` },
+  { think: 'Matching people to open places, longest wait first, closest suitable place.' },
+  { tool: 'match_to_setting', src: 'decision engine', res: `${R.matches.length} placements · ${matchSummary()}`, on: 'lines', add: R.matches.length, opp: 'place' },
+  { tool: 'screen_hospital_at_home', src: 'Signal 1 · program criteria', res: `${R.hah.eligible.length} eligible of ${n0(R.hah.screened)} inpatients screened`, on: 'hah', add: R.hah.eligible.length, opp: 'hah' },
+  { tool: 'screen_remote_monitoring', src: 'PARIS · SRM census', res: `${R.srm.length} can go home with Seniors Remote Monitoring`, on: 'srm', add: R.srm.length, opp: 'srm' },
+  { tool: 'review_contracts', src: 'contracts database', res: `${R.contracts.rows.length} contracts under 75% occupied for 90 days · ${R.contracts.empty} empty units`, opp: 'contracts' },
+  { tool: 'find_mismatches', src: 'PARIS · assessments', res: `${R.mismatches.stepUp + R.mismatches.stepDown} residents in the wrong level of support`, opp: 'mismatch' },
+  { think: `${R.rem.noSetting} people still have nowhere to go. Nothing in the portfolio fits them. Checking what VCH could build or buy instead.` },
+  { tool: 'analyse_unmet_need', src: 'decision engine', res: `brain-injury cohort (${R.abi.n}) · 3 options modelled · draft for the executive`, opp: 'none' },
+];
+function matchSummary() { const c = {}; R.matches.forEach((m) => { c[m.node.type] = (c[m.node.type] || 0) + 1; }); return Object.entries(c).map(([k, v]) => `${k.toUpperCase()} ${v}`).join(' · '); }
+
+let runTimer = null;
+function runEngine() {
+  if (S.run !== 'idle') return;
+  S.run = 'running'; S.feed = []; S.released = 0; S.shown = { lines: false, hah: false, srm: false, opps: [] };
+  render();
+  const steps = STEPS();
+  let i = 0;
+  const next = () => {
+    if (i >= steps.length) return finishEngine();
+    const st = steps[i++];
+    S.feed.push(st);
+    const feed = $('feed');
+    if (feed) { if (S.feed.length === 1) feed.innerHTML = ''; feed.insertAdjacentHTML('beforeend', feedItem(st)); feed.scrollTop = feed.scrollHeight; }
+    if (st.on) { S.shown[st.on] = true; const g = $('mapLines'); if (g) g.insertAdjacentHTML('beforeend', linesHTML(st.on)); }
+    if (st.add) countUp(S.released, S.released + st.add), S.released += st.add;
+    if (st.opp) { S.shown.opps.push(st.opp); const ol = $('oppList'); const o = OPPS.find((x) => x.id === st.opp); if (ol && o) ol.insertAdjacentHTML('beforeend', oppHTML(o)); }
+    runTimer = setTimeout(next, reduced() ? 60 : st.think ? 1100 : 950);
+  };
+  next();
+}
+function countUp(from, to) {
+  const el = $('releasedBig'); if (!el) return;
+  const t0 = performance.now(), dur = reduced() ? 1 : 700;
+  const step = (t) => { const k = Math.min(1, (t - t0) / dur); el.textContent = Math.round(from + (to - from) * k); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function finishEngine() {
+  clearTimeout(runTimer);
+  S.run = 'done'; S.released = R.released; S.feed = STEPS(); S.shown = { lines: true, hah: true, srm: true, opps: OPPS.map((o) => o.id) };
+  render();
+  toast(`${R.released} acute beds released today, pending sign-off`);
+}
+function skipEngine() { finishEngine(); }
+function ensureRun() { if (S.run === 'idle') { S.run = 'done'; S.released = R.released; S.feed = STEPS(); S.shown = { lines: true, hah: true, srm: true, opps: OPPS.map((o) => o.id) }; } }
+
+// ---------- scene 3: one person ----------
+const NEED_PROFILES = {
+  ltc: [['Personal care', 0.8], ['Mobility support', 0.7], ['Nursing oversight', 0.45], ['Supervision', 0.3], ['Behaviour support', 0.1]],
+  al: [['Meals and housekeeping', 0.7], ['Medication support', 0.5], ['Personal care', 0.35], ['Supervision', 0.2], ['Nursing oversight', 0.15]],
+  sh: [['Housing', 0.9], ['Mental health support', 0.6], ['Medication support', 0.55], ['Supervision', 0.25], ['Personal care', 0.1]],
+  home: [['Home support visits', 0.6], ['Remote monitoring', 0.5], ['Nursing visits', 0.35], ['Personal care', 0.3], ['Supervision', 0.1]],
+  abi: [['24-hour supervision', 0.9], ['Behaviour support', 0.8], ['Psychiatry and medication management', 0.65], ['Personal care', 0.35], ['Mobility support', 0.15]],
+  complex: [['Housing', 0.95], ['Mental health and substance use support', 0.75], ['Wound or medical care', 0.7], ['Supervision', 0.5], ['Personal care', 0.4]],
+};
+const FIT_TEMPLATES = {
+  abi: [['Long-term care', false, 'Declined: behaviours; under 65'], ['Secured long-term care', false, 'No vacancy; built for dementia, not brain injury'], ['Assisted living', false, 'Needs 24-hour supervision'], ['Supported housing', false, 'Care needs exceed staffing model'], ['Complex care housing', false, 'No vacancy (140 of 140 places full)'], ['Home with supports', false, 'No safe home to return to']],
+  complex: [['Long-term care', false, 'Under 65; active substance use'], ['Assisted living', false, 'Nursing needs too high'], ['Supported housing', false, 'Wound care exceeds staffing model'], ['Complex care housing', false, 'No vacancy (140 of 140 places full)'], ['Shelter', false, 'Unsafe: would likely be readmitted'], ['Home with supports', false, 'No home']],
+};
+
+function personList() {
+  const placed = R.matches.filter((m) => !m.patient.persona).slice(0, 3).map((m) => ({ key: m.patient.id, p: m.patient, kind: 'match', m }));
+  const jm = R.matches.find((m) => m.patient.persona === 'joseph');
+  const srm = R.srm.slice(0, 1).map((p) => ({ key: p.id, p, kind: 'srm' }));
+  const none = R.rem.rest.filter((p) => (p.need === 'abi' || p.need === 'complex') && !p.persona).sort((a, b) => b.days - a.days).slice(0, 2).map((p) => ({ key: p.id, p, kind: 'none' }));
+  return {
+    go: [{ key: 'margaret', p: D.personas.margaret, kind: 'hah' }, { key: 'joseph', p: jm.patient, kind: 'match', m: jm }, ...placed, ...srm],
+    none: [{ key: 'daniel', p: D.patients.find((p) => p.persona === 'daniel'), kind: 'none' }, ...none],
+  };
+}
+function openPerson(key) { ensureRun(); S.selected = key; go(3); if (S.scene === 3) render(); }
+
+function scene3() {
+  ensureRun();
+  const L = personList();
+  const all = [...L.go, ...L.none];
+  const cur = all.find((x) => x.key === S.selected) || all[0];
+  const row = (x) => `<button class="prow${x.key === cur.key ? ' on' : ''}" onclick="S.selected='${x.key}';render()"><div class="pn">${esc(x.p.name)}, ${x.p.age}</div>
+    <div class="pd">${esc(site(x.p.site).short)} · ${x.kind === 'hah' ? 'inpatient day ' + x.p.days : x.p.days + ' days ready to leave'}</div>
+    <div class="pd" style="margin-top:3px">${x.kind === 'hah' ? '<span class="pill ocean">Hospital at Home</span>' : x.kind === 'srm' ? '<span class="pill" style="color:#6a5ca8">Home with remote monitoring</span>' : x.kind === 'match' ? `<span class="pill good">${esc(TYPE_LAB[x.m.node.type])}</span>` : '<span class="pill zero">No setting fits</span>'}</div></button>`;
+  return headHTML('One person at a time', 'Behind every number is a person',
+    'What the engine found tonight for the people behind the census. Names and details are fictional.')
+    + `<div class="person"><div class="card plist" style="padding:0;overflow:hidden">
+        <div class="grp">Can leave hospital now</div>${L.go.map(row).join('')}
+        <div class="grp">No setting fits</div>${L.none.map(row).join('')}</div>
+      <div class="card">${personDetail(cur)}</div></div>`;
+}
+
+function needsHTML(list) {
+  return list.map(([l, v]) => `<div class="need"><span>${esc(l)}</span><div class="bar"><span style="width:${Math.round(v * 100)}%;background:${v > 0.7 ? '#1f3b57' : v > 0.4 ? '#0078ae' : '#9fcbe2'}"></span></div></div>`).join('');
+}
+
+function personDetail(x) {
+  const p = x.p; const s = site(p.site);
+  const initials = p.name.split(' ').map((w) => w[0]).join('').replace('.', '');
+  const head = `<div class="ph"><div class="avatar">${esc(initials)}</div><div><h2 style="font-size:20px;color:var(--navy)">${esc(p.name)}, ${p.age}</h2>
+    <div class="mono" style="font-size:12px;color:var(--muted)">${esc(p.id)} · ${esc(s.name)}${p.unit ? ' · ' + esc(p.unit) : ''} · ${x.kind === 'hah' ? 'acute inpatient, day ' + p.days : 'ready to leave for ' + p.days + ' days'}</div></div></div>`;
+  const pres = `<div class="eyebrow">Presentation</div><p style="margin:0 0 14px;max-width:75ch">${esc(p.presentation || `${p.dx}. Medically ready to leave hospital for ${p.days} days at ${s.short}. Needs: ${D.needMeta[p.need].label.toLowerCase()}.`)}</p>`;
+  if (x.kind === 'hah') return head + pres + hahHTML(p);
+  if (x.kind === 'match') return head + pres + `<div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+      <div><div class="eyebrow">Needs profile</div>${needsHTML(p.needsProfile || NEED_PROFILES[p.need])}</div>
+      <div><div class="eyebrow">Open place the engine found</div>${matchCard(x)}</div></div>`;
+  if (x.kind === 'srm') return head + pres + `<div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr)">
+      <div><div class="eyebrow">Needs profile</div>${needsHTML(NEED_PROFILES.home)}</div>
+      <div><div class="eyebrow">Discharge plan the engine drafted</div><div class="card" style="background:var(--panel2)">
+        <div style="font-weight:600;color:var(--navy)">Home with Seniors Remote Monitoring</div>
+        <div class="kv"><span>Remote monitoring kit</span><b>1 of ${D.portfolio.find((q) => q.id === 'srm').open} open slots</b></div>
+        <div class="kv"><span>Home support</span><b>2 visits a day</b></div><div class="kv"><span>Nurse check-in</span><b>daily for 2 weeks</b></div>
+        ${actionBtn(x.key, 'Send discharge plan for sign-off', 'Discharge plan sent for sign-off')}</div></div></div>`;
+  // no setting fits
+  const fits = p.fit || FIT_TEMPLATES[p.need] || FIT_TEMPLATES.complex;
+  const isAbi = p.need === 'abi';
+  return head + pres + `<div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)">
+      <div><div class="eyebrow">Needs profile</div>${needsHTML(p.needsProfile || NEED_PROFILES[p.need])}</div>
+      <div><div class="eyebrow">Does any setting fit?</div>${fits.map(([n, ok, why]) => `<div class="fit"><span class="x ${ok ? 'yes' : 'no'}">${ok ? '✓' : '✕'}</span><b style="font-weight:600">${esc(n)}</b><span style="color:var(--ink2)">${esc(why)}</span></div>`).join('')}</div></div>
+    <div class="callout" style="margin-top:16px;display:flex;gap:16px;align-items:center;justify-content:space-between">
+      <div>${esc(p.name.split(' ')[0])} is one of <b>${isAbi ? R.abi.n : R.rem.by.complex} people</b> ${isAbi ? `across ${R.abi.sites} sites with a brain injury and nowhere that fits. Together they hold <b>${n0(R.abi.bedDaysYr)} acute bed-days a year</b>.` : 'with complex concurrent needs and no setting that fits.'}</div>
+      ${isAbi ? `<button class="btn lime" onclick="go(4)">Open the options analysis →</button>` : `<button class="btn lime" onclick="go(4)">See how the engine analyses a cohort →</button>`}</div>`;
+}
+
+function matchCard(x) {
+  const nd = x.m.node;
+  return `<div class="card" style="background:var(--panel2)">
+    <div style="font-weight:600;color:var(--navy)">${esc(nd.name)}</div>
+    <div class="kv"><span>Open place</span><b>1 ${nd.program ? 'home-support slot' : 'bed'} · available now</b></div>
+    <div class="kv"><span>Distance from ${esc(site(x.p.site).short)}</span><b>${x.m.km.toFixed(1)} km</b></div>
+    <div class="kv"><span>Meets care needs</span><b style="color:var(--good)">Yes</b></div>
+    ${x.p.persona === 'joseph' ? '<div class="kv"><span>Near family</span><b style="color:var(--good)">Yes, 2 km from his daughter</b></div>' : ''}
+    <div class="kv"><span>Cost per night</span><b>${money(D.portfolio.find((q) => q.id === nd.type).costNight)} vs ${money(D.costs.alcDay)} in acute</b></div>
+    ${actionBtn(x.key, 'Send referral for sign-off', `Referral sent to ${nd.name}`)}</div>`;
+}
+function actionBtn(key, label, done) {
+  return S.sent[key] ? `<div style="margin-top:12px"><span class="pill good">✓ ${esc(done)}</span></div>`
+    : `<button class="btn primary" style="margin-top:12px;width:100%" onclick="sendFor('${key}','${esc(done).replace(/'/g, '&#39;')}')">${esc(label)}</button>`;
+}
+function sendFor(key, msg) { S.sent[key] = true; render(); toast(msg + ' · bed released when accepted'); }
+
+function hahHTML(p) {
+  const st = S.pkg.margaret || 'none';
+  const items = p.package.map((it, i) => `<div id="pk${i}" class="${st === 'ready' || st === 'sent' ? 'done' : ''}">${st === 'ready' || st === 'sent' ? '✓' : '○'} ${esc(it)}</div>`).join('');
+  return `<div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)">
+    <div><div class="eyebrow">Hospital at Home eligibility</div>
+      ${p.criteria.map(([c, ok]) => `<div class="fit" style="grid-template-columns:22px 1fr"><span class="x ${ok ? 'yes' : 'no'}">${ok ? '✓' : '✕'}</span><span>${esc(c)}</span></div>`).join('')}
+      <div class="srcnote" ${tip('Signal 1 model output joined to Hospital at Home program criteria.', 'signal1.deterioration · hah.criteria')}>Screened tonight with ${n0(R.hah.screened)} other inpatients. ${R.hah.eligible.length} were eligible.</div></div>
+    <div><div class="eyebrow">Transition package <small style="text-transform:none;letter-spacing:0;color:var(--muted)">assembled from the chart, editable before sending</small></div>
+      <div class="pkg">${items}</div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        ${st === 'none' ? `<button class="btn primary" onclick="buildPackage()">Assemble package</button>` : ''}
+        ${st === 'building' ? `<button class="btn" disabled>Assembling…</button>` : ''}
+        ${st === 'ready' ? `<button class="btn primary" onclick="sendHah()">Send to Hospital at Home</button><span class="srcnote" style="margin:auto 0">About 40 minutes of chart work, done in seconds.</span>` : ''}
+        ${st === 'sent' ? `<span class="pill good">✓ Accepted by Hospital at Home · VGH 6 East bed released</span>` : ''}
+      </div></div></div>`;
+}
+function buildPackage() {
+  S.pkg.margaret = 'building'; render();
+  const n = D.personas.margaret.package.length; let i = 0;
+  const tick = () => {
+    const el = $('pk' + i); if (el) { el.className = 'done'; el.textContent = '✓ ' + D.personas.margaret.package[i]; }
+    i++; if (i < n) setTimeout(tick, reduced() ? 10 : 330); else { S.pkg.margaret = 'ready'; setTimeout(render, 250); }
+  };
+  setTimeout(tick, 200);
+}
+function sendHah() { S.pkg.margaret = 'sent'; render(); toast('Hospital at Home accepted Margaret · Medly enrolment and monitoring kit ordered'); }
+
+// ---------- scene 4: the next beds ----------
+function scene4() {
+  ensureRun();
+  const C = R.abi;
+  const m = Engine.abiModel({ A: S.sl.A, B: S.sl.B, C: S.sl.C }, S.sl.occ);
+  const opt = (o) => `<div class="opt"><div class="eyebrow" style="margin:0">Option ${o.id}</div><div class="on">${esc(o.name)}</div><div class="os">${esc(o.sub)}</div>
+    <div class="kv"><span>Cost per night</span><b ${tip('Illustrative unit cost.', 'finance.unit_costs (illustrative)')}>${money(o.costNight)}</b></div>
+    <div class="kv"><span>Fits</span><b>${o.fits} of ${C.n} people</b></div>
+    <div class="kv"><span>Ready in</span><b>${o.lead}</b></div>
+    <div class="kv"><span>One-time capital</span><b>${o.capex ? moneyM(o.capex) : '–'}</b></div>
+    <div class="slider"><label for="sl${o.id}" class="srcnote" style="margin:0">Beds</label><input type="range" id="sl${o.id}" min="0" max="${o.maxBeds}" value="${S.sl[o.id]}" oninput="setSl('${o.id}',this.value)"><output id="o${o.id}">${S.sl[o.id]}</output></div></div>`;
+  const sq = `<div class="opt sq"><div class="eyebrow" style="margin:0;color:var(--crit)">Today</div><div class="on">Stay in acute care</div><div class="os">Deconditioning, boarded emergency patients, no plan</div>
+    <div class="kv"><span>Cost per night</span><b ${tip('Conservative ALC bed-day cost (Sutherland et al. 2019).', 'costs.alc_day')}>${money(D.costs.alcDay)}</b></div>
+    <div class="kv"><span>Fits</span><b>none</b></div><div class="kv"><span>Ready in</span><b>–</b></div><div class="kv"><span>Acute bed-days a year</span><b>${n0(C.bedDaysYr)}</b></div></div>`;
+  return headHTML('Decision engine · options analysis', 'What should the next beds be?',
+    `${C.n} people with a brain injury and neuropsychiatric needs are waiting in acute care across ${C.sites} sites. Nothing in VCH’s portfolio fits them. The engine compares ways to create the capacity they need.`,
+    `<span class="pill warn" style="align-self:flex-start">Draft · sign-off required</span>`)
+    + `<div class="tiles">
+      <div class="tile"><div class="lab">People in this cohort</div><div class="big">${C.n}</div><div class="sub">across ${C.sites} acute sites</div></div>
+      <div class="tile"><div class="lab">Average time ready to leave</div><div class="big">${Math.round(C.avgDays)} days</div><div class="sub">and counting</div></div>
+      <div class="tile alert"><div class="lab">Acute bed-days held a year</div><div class="big">${n0(C.bedDaysYr)}</div><div class="sub">if nothing changes</div></div>
+      <div class="tile"><div class="lab">Acute capacity they hold</div><div class="big">${moneyM(C.valueYr)}</div><div class="sub">a year, at $1,090 per day</div></div></div>
+    <div class="opts">${D.abiOptions.map(opt).join('')}${sq}</div>
+    <div class="grid" style="grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);margin-top:14px">
+      <div class="card"><h3>Effect of this portfolio <small>median and 80% range</small></h3>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><label for="slOcc" class="srcnote" style="margin:0">Expected occupancy</label>
+          <input type="range" id="slOcc" min="0.7" max="0.98" step="0.01" value="${S.sl.occ}" oninput="setSl('occ',this.value)" style="width:160px;accent-color:var(--ocean)">
+          <output id="oOcc" class="num" style="font-weight:700;color:var(--ocean)">${Math.round(S.sl.occ * 100)}%</output></div>
+        <div id="resCard">${resultsHTML(m)}</div></div>
+      <div class="card"><h3>Draft for the executive <small>written by the engine from the model above</small></h3><div class="memo" id="memo">${memoHTML(m)}</div>
+        <button class="btn" onclick="copyMemo()" style="margin-top:6px">Copy memo text</button></div></div>`;
+}
+function rangeBar(lo, mid, hi, max) {
+  const p = (v) => Math.max(0, Math.min(100, v / max * 100));
+  return `<div class="range"><span style="left:${p(lo)}%;width:${(p(hi) - p(lo)).toFixed(1)}%"></span><i style="left:calc(${p(mid)}% - 1px)"></i></div>`;
+}
+function resultsHTML(m) {
+  return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px"><span class="pill ocean">${m.totalBeds} new places</span><span class="pill ${m.placed >= R.abi.n ? 'good' : 'warn'}">places ${m.placed} of ${R.abi.n} people</span></div>
+    <div class="res">
+      <div class="metric"><div class="lab">Acute bed-days released a year</div><div class="v">${n0(m.bedDays)}</div>${rangeBar(m.bd10, m.bedDays, m.bd90, Math.max(8400, m.bd90))}<div class="r">${n0(m.bd10)} to ${n0(m.bd90)}</div></div>
+      <div class="metric"><div class="lab">Room for more admissions a year</div><div class="v">${n0(m.admissions)}</div><div class="r" ${tip('Bed-days released ÷ 8.1-day average stay (C.D. Howe Institute).', 'costs.avg_los')}>at an 8.1-day average stay</div></div>
+      <div class="metric"><div class="lab">Blended cost per night</div><div class="v">${m.totalBeds ? money(m.costPerNight) : '–'}</div><div class="r">vs ${money(D.costs.alcDay)} in acute care</div></div>
+      <div class="metric"><div class="lab">Cost to run a year</div><div class="v">${moneyM(m.opexYr)}</div><div class="r">plus ${m.capex ? moneyM(m.capex) + ' one-time capital' : 'no capital'}</div></div>
+      <div class="metric"><div class="lab">Acute capacity released, value a year</div><div class="v">${moneyM(m.value)}</div><div class="r">at $1,090 per ALC day</div></div>
+      <div class="metric"><div class="lab">Net capacity value a year</div><div class="v" style="color:${m.net >= 0 ? 'var(--good)' : 'var(--crit)'}">${moneyM(m.net)}</div>${rangeBar(Math.max(0, m.net10), Math.max(0, m.net), Math.max(0, m.net90), Math.max(5e6, m.net90))}<div class="r">${moneyM(m.net10)} to ${moneyM(m.net90)}</div></div>
+    </div>
+    <div class="srcnote">Ranges come from 800 simulations varying occupancy, placement breakdown (up to 15%) and operating cost (±16%). Unit costs are illustrative until CHORDS completes VCH’s cost-per-bed work. Released capacity refills with other patients; it is not a cash saving.</div>`;
+}
+function memoParts(m) {
+  if (!m.totalBeds) return null;
+  const parts = [];
+  const mix = [];
+  if (S.sl.B) mix.push(`${S.sl.B} in a VCH-run small complex-care home`);
+  if (S.sl.A) mix.push(`${S.sl.A} contracted secured beds`);
+  if (S.sl.C) mix.push(`${S.sl.C} enhanced supported-housing units`);
+  parts.push(['Recommendation', `For the ${R.abi.n} people with a brain injury and neuropsychiatric needs now waiting in acute care, create ${m.totalBeds} places: ${mix.join(', ')}. This places ${m.placed} of ${R.abi.n} people.`]);
+  parts.push(['Effect on acute care', `About ${n0(m.bedDays)} acute bed-days released a year (80% range ${n0(m.bd10)} to ${n0(m.bd90)}), room for about ${n0(m.admissions)} more admissions, worth ${moneyM(m.value)} a year at a conservative $1,090 per ALC day.¹`]);
+  parts.push(['Cost', `${moneyM(m.opexYr)} a year to operate, a blended ${money(m.costPerNight)} per bed-night against $1,090 in acute care.²${m.capex ? ` One-time capital of ${moneyM(m.capex)} for the home.³` : ''} Net capacity value ${moneyM(m.net)} a year (80% range ${moneyM(m.net10)} to ${moneyM(m.net90)}).`]);
+  parts.push(['Caveats', 'Unit costs are illustrative until CHORDS completes VCH’s cost-per-bed work. Ranges reflect occupancy, placement breakdown and operating cost. Draft for discussion; requires sign-off.']);
+  return parts;
+}
+function memoHTML(m) {
+  const parts = memoParts(m);
+  if (!parts) return '<p>Set at least one option above zero to see its effect.</p>';
+  const sup = { '¹': tip('Sutherland et al. 2019 estimate, 2016 dollars. Conservative.', 'costs.alc_day'), '²': tip('Illustrative unit costs by bed type.', 'finance.unit_costs'), '³': tip('Purchase and retrofit of a residential property. Illustrative.', 'capital.estimate') };
+  return parts.map(([h, t]) => `<p><b>${h}.</b> ${esc(t).replace(/[¹²³]/g, (c) => `<sup ${sup[c]}>${c === '¹' ? 1 : c === '²' ? 2 : 3}</sup>`)}</p>`).join('');
+}
+function setSl(k, v) {
+  S.sl[k] = k === 'occ' ? +v : Math.round(+v);
+  const m = Engine.abiModel({ A: S.sl.A, B: S.sl.B, C: S.sl.C }, S.sl.occ);
+  if (k !== 'occ') { const o = $('o' + k); if (o) o.textContent = S.sl[k]; } else { const o = $('oOcc'); if (o) o.textContent = Math.round(S.sl.occ * 100) + '%'; }
+  $('resCard').innerHTML = resultsHTML(m);
+  $('memo').innerHTML = memoHTML(m);
+}
+function copyMemo() {
+  const parts = memoParts(Engine.abiModel({ A: S.sl.A, B: S.sl.B, C: S.sl.C }, S.sl.occ));
+  const text = parts ? parts.map(([h, t]) => `${h}. ${t.replace(/[¹²³]/g, '')}`).join('\n\n') : '';
+  try { navigator.clipboard.writeText(text).then(() => toast('Memo text copied'), () => toast('Copy was blocked by the browser')); } catch (e) { toast('Copy was blocked by the browser'); }
+}
+
+// ---------- scene 5: the gift ----------
+function scene5() {
+  const road = [
+    ['Tonight’s picture of every bed', 'Live community-bed board, Version 1', 'Month 12'],
+    ['Acute capacity held by ALC, by site', 'Weekly cost-of-ALC report for every acute site', 'Month 6'],
+    ['The engine reading Cerner, PARIS and contracts', 'Automated, governed data feeds, starting with Signal 1', 'Month 9'],
+    ['Margaret going home with Hospital at Home', 'Hospital at Home and remote-monitoring eligibility finder, piloted at one site', 'Month 12'],
+    ['Medly on Margaret’s discharge', 'Medly live in the first heart-failure clinic', 'Month 9'],
+    ['What should the next beds be?', 'First decision-engine business case to the executive', 'Month 6'],
+  ];
+  const name = S.donor ? esc(S.donor) : '[Donor]';
+  return headHTML('The gift', 'From prototype to a permanent centre', 'What you have just seen, when it becomes real, and what the gift builds.')
+    + `<div class="gift">
+      <div class="card"><h3>What you saw, and when it becomes real</h3>
+        <table class="road"><thead><tr><th>In this demo</th><th>What the gift builds</th><th class="r">When</th></tr></thead>
+        <tbody>${road.map(([a, b, c]) => `<tr><td>${esc(a)}</td><td>${esc(b)}</td><td class="r"><span class="pill ocean">${c}</span></td></tr>`).join('')}</tbody></table>
+        <div class="srcnote">Today this is a prototype on illustrative data. Privacy impact assessments, the SFU data-sharing agreement and VCH’s Signal 1 contract are already in place.</div></div>
+      <div class="grid" style="align-content:start">
+        <div class="card"><h3>By Year 5</h3><table><tbody>
+          <tr><td><b class="num" style="font-size:20px;color:var(--navy)">−20%</b></td><td>ALC days for people waiting for a community bed</td></tr>
+          <tr><td><b class="num" style="font-size:20px;color:var(--navy)">≥95%</b></td><td>of VCH-funded community beds visible, with daily occupancy and unit cost</td></tr>
+          <tr><td><b class="num" style="font-size:20px;color:var(--navy)">≥8</b></td><td>decision-engine analyses that changed a budget</td></tr>
+          <tr><td><b class="num" style="font-size:20px;color:var(--navy)">≥250</b></td><td>patients on Medly, with fewer heart-failure admissions</td></tr></tbody></table></div>
+        <div class="card"><h3>Already built</h3><table><tbody>
+          <tr><td class="r" style="width:70px"><b>8</b></td><td>VCH–SFU Embedded Research Program projects</td></tr>
+          <tr><td class="r"><b>42</b></td><td>team members, 25 of them VCH staff</td></tr>
+          <tr><td class="r"><b>$500K</b></td><td>already invested by the VGH &amp; UBC Hospital Foundation</td></tr>
+          <tr><td class="r"><b>1</b></td><td>working model of VCH’s supported-housing system, now redesigning placements</td></tr></tbody></table></div>
+      </div></div>
+    <div class="endcard">
+      <div><div class="eyebrow" style="color:var(--lime)">Naming opportunity</div><div class="nm">The <span>${name}</span> Centre for Health Operations Research and Decision Science</div>
+        <p style="color:#c9dae7;margin:10px 0 0;max-width:60ch">A permanent centre inside Vancouver Coastal Health that sees every bed, decides where each person should go, and makes the case for what to build next. VCH sustains it from Year 6.</p></div>
+      <div><div class="tier"><div class="a">$5.0M</div><div class="d">Tier 1 · five years · the command centre, the CHORDS core team, the SFU partnership and Medly</div></div>
+        <div class="tier"><div class="a">$10.0M</div><div class="d">Tier 2 · five years · adds four more digital-therapeutic pilots, AI enablement, an operations room, a staff modelling academy and spread to a second organization</div></div></div>
+    </div>`;
+}
+
+// ---------- settings, notes, toast, tooltip ----------
+function settingsHTML() {
+  return `<div class="modal-bg" onclick="if(event.target===this)closeSettings()"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="setT">
+    <h2 id="setT" style="font-size:17px;color:var(--navy)">Demo settings</h2>
+    <label for="donorIn">Donor name (shown on the brand line and the closing scene)</label>
+    <input type="text" id="donorIn" value="${esc(S.donor)}" placeholder="e.g. Smith Family">
+    <label for="notesIn"><input type="checkbox" id="notesIn" ${S.notes ? 'checked' : ''}> Show presenter notes (press N)</label>
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn primary" onclick="saveSettings()">Save</button>
+      <button class="btn" onclick="replayEngine()">Replay the engine</button>
+      <button class="btn" onclick="resetDemo()">Reset demo</button>
+      <button class="btn" onclick="closeSettings()" style="margin-left:auto">Close</button></div>
+    <p class="srcnote">Keys: ← → move between scenes · 1–5 jump · N notes · R run the engine.</p></div></div>`;
+}
+function openSettings() { S.settings = true; render(); const i = $('donorIn'); if (i) i.focus(); }
+function closeSettings() { S.settings = false; render(); }
+function saveSettings() { S.donor = $('donorIn').value.trim().slice(0, 60); S.notes = $('notesIn').checked; store.set('donor', S.donor); store.set('notes', S.notes); S.settings = false; render(); }
+function toggleNotes() { S.notes = !S.notes; store.set('notes', S.notes); render(); }
+function replayEngine() { clearTimeout(runTimer); S.run = 'idle'; S.feed = []; S.released = 0; S.shown = { lines: false, hah: false, srm: false, opps: [] }; S.settings = false; go(2); render(); }
+function resetDemo() { clearTimeout(runTimer); Object.assign(S, { run: 'idle', feed: [], released: 0, shown: { lines: false, hah: false, srm: false, opps: [] }, selected: 'margaret', pkg: {}, sent: {}, sl: { A: 6, B: 10, C: 6, occ: 0.9 }, settings: false }); go(1); render(); }
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.innerHTML = `<i></i>${esc(msg)}`;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3400);
+}
+function afterRender() { /* hook for future per-scene effects */ }
+
+document.addEventListener('mouseover', (e) => {
+  const el = e.target.closest ? e.target.closest('[data-tip]') : null; const tt = $('tooltip');
+  if (!el) { tt.style.display = 'none'; return; }
+  tt.innerHTML = esc(el.getAttribute('data-tip')) + (el.getAttribute('data-src') ? `<div class="s">source: ${esc(el.getAttribute('data-src'))}</div>` : '');
+  tt.style.display = 'block';
+});
+document.addEventListener('mousemove', (e) => {
+  const tt = $('tooltip'); if (tt.style.display !== 'block') return;
+  const x = Math.min(e.clientX + 14, window.innerWidth - 340), y = Math.min(e.clientY + 14, window.innerHeight - 90);
+  tt.style.left = x + 'px'; tt.style.top = y + 'px';
+});
+document.addEventListener('keydown', (e) => {
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) { if (e.key === 'Escape') closeSettings(); return; }
+  if (S.settings) { if (e.key === 'Escape') closeSettings(); return; }
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') go(S.scene + 1);
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(S.scene - 1);
+  else if (/^[1-5]$/.test(e.key)) go(+e.key);
+  else if (e.key === 'n' || e.key === 'N') toggleNotes();
+  else if ((e.key === 'r' || e.key === 'R') && S.scene === 2) runEngine();
+});
+
+fromHash();
+
+</script>
+</body>
+</html>
